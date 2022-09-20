@@ -1,0 +1,18 @@
+{
+    "name": "Adrenak.UniVoice.ChatroomNetwork.Telepathy",
+    "references": [
+        "GUID:6b289bb677194eb40b60db3a566aab7b",
+        "GUID:1f776cd02c03a7b4280b6b649d7758e2"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
