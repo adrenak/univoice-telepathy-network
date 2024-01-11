@@ -121,13 +121,16 @@ namespace Adrenak.UniVoice.TelepathyNetwork {
             PeerIDs.Clear();
             OwnID = -1;
             OnLeftChatroom?.Invoke();
+            Debug.Log("Client Disconnected");
         }
 
         void OnConnected_Server(int obj) {
             var id = (short)obj;
             if(id != 0) {
-                if (!PeerIDs.Contains(id))
+                if (!PeerIDs.Contains(id)) {
                     PeerIDs.Add(id);
+                    Debug.Log("A new client with ID " + id + " has joined");
+                }
                 foreach (var peer in PeerIDs) {
                     // Let the new client know its ID
                     if (peer == id) {
@@ -135,12 +138,18 @@ namespace Adrenak.UniVoice.TelepathyNetwork {
                             .Where(x => x != peer)
                             .Select(x => (int)x)
                             .ToList();
+
+                        // Server is ID 0, we add outselves to the peer list
+                        // for the newly joined client
                         peersForNewClient.Add(0);
+
+                        string peerListString = string.Join(", ", peersForNewClient);
 
                         var newClientPacket = new BytesWriter()
                             .WriteString(NEW_CLIENT_INIT)
                             .WriteInt(id)
                             .WriteIntArray(peersForNewClient.ToArray());
+                        Debug.Log("Initializing new client with peer list: " + peerListString);
                         server.Send(peer, new ArraySegment<byte>(newClientPacket.Bytes));
                     }
                     // Let other clients know a new peer has joined
@@ -164,12 +173,15 @@ namespace Adrenak.UniVoice.TelepathyNetwork {
                 var recipient = packet.ReadShort();
                 var segmentBytes = packet.ReadByteArray();
 
+                // If the audio is for the server, we invoke the audio received event.
                 if (recipient == OwnID) {
                     var segment = FromByteArray<ChatroomAudioSegment>(segmentBytes);
                     OnAudioReceived?.Invoke(audioSender, segment);
                 }
+                // If the message is meant for someone else,
+                // we forward it to the intended recipient.
                 else if (PeerIDs.Contains(recipient))
-                    server.Send(recipient, new ArraySegment<byte>(segmentBytes));
+                    server.Send(recipient, data);
             }
         }
 
@@ -178,7 +190,7 @@ namespace Adrenak.UniVoice.TelepathyNetwork {
                 if (PeerIDs.Contains((short)id))
                     PeerIDs.Remove((short)id);
                 foreach (var peer in PeerIDs) {
-
+                    // Notify all remaining peers that someone has left 
                     var packet = new BytesWriter()
                         .WriteString(CLIENT_LEFT)
                         .WriteInt(id);
@@ -248,7 +260,7 @@ namespace Adrenak.UniVoice.TelepathyNetwork {
             if (client.Connected || client.Connecting)
                 client.Disconnect();
             else
-                Debug.LogWarning("LeaveChatroom failed. Currently connected to any chatroom");
+                Debug.LogWarning("LeaveChatroom failed. Currently not connected to any chatroom");
         }
 
         /// <summary>
@@ -263,10 +275,8 @@ namespace Adrenak.UniVoice.TelepathyNetwork {
 
             var packet = new BytesWriter()
                 .WriteString(AUDIO_SEGMENT)
-                // Sender
-                .WriteShort(OwnID)
-                // Recipient
-                .WriteShort(peerID)
+                .WriteShort(OwnID) // Sender
+                .WriteShort(peerID) // Recipient
                 .WriteByteArray(ToByteArray(data));
 
             if (server.Active) 
